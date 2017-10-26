@@ -7,14 +7,11 @@ import ConfigParser
 from pyspark import SparkContext
 from pyspark.mllib.regression import *
 from pyspark.mllib.classification import *
-from pyspark.mllib.linalg import SparseVector
-from pyspark.mllib.stat import Statistics
-from pyspark.mllib.util import MLUtils
 from sklearn.metrics import *
 
 
 def dsplit(split, data, func, numClasses, offset=0):
-
+    '''Splits dataset into train and test sets, and tests an alogrithm'''
     sc = SparkContext(appName="ML_Task2")
     sc.setLogLevel('OFF')
 
@@ -44,6 +41,7 @@ def nfold(n, data, func, numClasses):
     return results, test
 
 def log_and_print(txt, file):
+    '''prints to console and file'''
     print(txt)
     file.write((txt + '\n'))
 
@@ -54,6 +52,7 @@ sc = SparkContext(appName="ML_Task2")
 sc.setLogLevel('OFF')
 sc.stop()
 
+#read filepaths from config file
 config = ConfigParser.ConfigParser()
 config.read('./config.cfg')
 
@@ -63,11 +62,13 @@ output_path = config.get('main', 'output_path')
 
 outputfile = open(output_path, 'w')
 
+#array of datasets and their properties
 datasets = [
 
     {
-        'name': 'SKIN',
+        'name': 'Skin_NonSkin Dataset',
         'filepath': skin_path,
+        'delimiter': '\t',
         'independant_features': (0, 3),
         'dependant_feature': 3,
         'classes': {
@@ -76,8 +77,9 @@ datasets = [
         }
     },
     {
-        'name': 'SUM',
+        'name': 'SUM Dataset',
         'filepath': sum_path,
+        'delimiter': ';',
         'independant_features': (1, 12),
         'dependant_feature': 12,
         'classes': {
@@ -105,11 +107,13 @@ algorithms = [
 for dataset in datasets:
     log_and_print(dataset['name'], outputfile)
     with open(dataset['filepath'], 'rb') as csvfile:
-        datagen = csv.reader(csvfile, delimiter=';', quotechar='|')
-        datagen.next()
+        datagen = csv.reader(csvfile, delimiter=dataset['delimiter'])
+        datagen.next() #clear title row
+        #transform data to [LabeledPoint(dependant_feature, [independant_features])]
         data = [LabeledPoint(dataset['classes'][x[dataset['dependant_feature']]],
             x[dataset['independant_features'][0]:dataset['independant_features'][1]])
             for x in itertools.islice(datagen, 100000)]
+        # (takes 100000 max due to OOM error in 10-fold Cross Validation)
 
     for algorithm in algorithms:
         log_and_print(('  ' + algorithm['name']), outputfile)
