@@ -3,6 +3,7 @@ import csv
 import itertools
 import warnings
 import ConfigParser
+import random
 
 from pyspark import SparkContext
 from pyspark.mllib.regression import *
@@ -96,7 +97,7 @@ datasets = [
 algorithms = [
     {
         'name': 'Logistic Regression',
-        'function': lambda data, classes, sc: LogisticRegressionWithLBFGS.train(sc.parallelize(data), iterations=10, numClasses=classes)
+        'function': lambda data, classes, sc: LogisticRegressionWithLBFGS.train(sc.parallelize(data), numClasses=classes)
     },
     {
         'name': 'Naive Bayes',
@@ -112,7 +113,9 @@ for dataset in datasets:
         #transform data to [LabeledPoint(dependant_feature, [independant_features])]
         data = [LabeledPoint(dataset['classes'][x[dataset['dependant_feature']]],
             x[dataset['independant_features'][0]:dataset['independant_features'][1]])
-            for x in itertools.islice(datagen, 100000)]
+            for x in itertools.islice(datagen, 500000)]
+        random.shuffle(data)
+        data = data[:100000]
         # (takes 100000 max due to OOM error in 10-fold Cross Validation)
 
     for algorithm in algorithms:
